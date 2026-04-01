@@ -3,6 +3,7 @@
 import csv
 import io
 
+import requests as http
 from flask import Blueprint, request, jsonify, Response
 
 # Import the database instance and Signal model from models.py
@@ -14,6 +15,56 @@ from classifier import classify
 # Create a Blueprint named "signals". app.py registers this with app.register_blueprint(bp).
 bp = Blueprint("signals", __name__)
 
+_NOMINATIM_HEADERS = {"User-Agent": "rf-signal-classifier/1.0"}
+
+
+def _reverse_geocode(lat, lon):
+    """Return a human-readable city/place name for a lat/lon pair, or None on failure."""
+    try:
+        r = http.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={"lat": lat, "lon": lon, "format": "json"},
+            headers=_NOMINATIM_HEADERS,
+            timeout=5,
+        )
+        r.raise_for_status()
+        addr = r.json().get("address", {})
+        city    = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("county", "")
+        state   = addr.get("state", "")
+        country = addr.get("country_code", "").upper()
+        parts   = [p for p in [city, state, country] if p]
+        return ", ".join(parts) if parts else None
+    except Exception:
+        return None
+
+
+def _forward_geocode(city):
+    """Return (lat, lon, display_name) for a city name, or None on failure."""
+    try:
+        r = http.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": city, "format": "json", "limit": 1},
+            headers=_NOMINATIM_HEADERS,
+            timeout=5,
+        )
+        r.raise_for_status()
+        results = r.json()
+        if not results:
+            return None
+        best    = results[0]
+        lat     = float(best["lat"])
+        lon     = float(best["lon"])
+        # Build a tidy display name from address components if available
+        addr    = best.get("address", {})
+        city_n  = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("county", "")
+        state   = addr.get("state", "")
+        country = addr.get("country_code", "").upper()
+        parts   = [p for p in [city_n, state, country] if p]
+        name    = ", ".join(parts) if parts else best.get("display_name", city)
+        return lat, lon, name
+    except Exception:
+        return None
+
 # Speed of light in m/s — used to calculate wavelength from frequency (c = fλ → λ = c/f)
 SPEED_OF_LIGHT = 3e8
 
@@ -23,6 +74,31 @@ REQUIRED_FIELDS = [
     "frequency_mhz", "bandwidth_mhz", "signal_strength_dbm",
     "modulation", "latitude", "longitude",
 ]
+
+
+@bp.post("/geocode")
+def geocode():
+    """
+    Dual-purpose geocoding endpoint.
+    - Send {"city": "Washington DC"}        → returns {lat, lng, location_name}
+    - Send {"lat": 38.89, "lng": -77.03}   → returns {location_name}
+    """
+    data = request.get_json(silent=True) or {}
+
+    if "city" in data:
+        result = _forward_geocode(data["city"])
+        if not result:
+            return jsonify({"error": "City not found"}), 404
+        lat, lon, name = result
+        return jsonify({"lat": lat, "lng": lon, "location_name": name}), 200
+
+    if "lat" in data and "lng" in data:
+        name = _reverse_geocode(float(data["lat"]), float(data["lng"]))
+        if not name:
+            return jsonify({"error": "Location not found"}), 404
+        return jsonify({"location_name": name}), 200
+
+    return jsonify({"error": "Provide either 'city' or 'lat'+'lng'"}), 400
 
 
 @bp.post("/signals")
@@ -46,6 +122,13 @@ def create_signal():
     # Convert MHz to Hz by multiplying by 1e6 before dividing
     wavelength = SPEED_OF_LIGHT / (float(data["frequency_mhz"]) * 1e6)
 
+    lat = float(data["latitude"])
+    lon = float(data["longitude"])
+
+    # If the client sent a city name it was already resolved to lat/lon on the frontend.
+    # Use whatever location_name they supply; fall back to reverse geocoding from lat/lon.
+    location_name = data.get("location_name") or _reverse_geocode(lat, lon)
+
     # Create a new Signal object. SQLAlchemy maps each keyword argument to a column.
     signal = Signal(
         frequency_mhz       = float(data["frequency_mhz"]),
@@ -56,8 +139,9 @@ def create_signal():
         pulse_rate_pps      = float(data["pulse_rate_pps"]) if data.get("pulse_rate_pps") is not None else None,
         pulse_width_us      = float(data["pulse_width_us"]) if data.get("pulse_width_us") is not None else None,
         wavelength_m        = wavelength,
-        latitude            = float(data["latitude"]),
-        longitude           = float(data["longitude"]),
+        latitude            = lat,
+        longitude           = lon,
+        location_name       = location_name,
     )
 
     # Stage the new record and write it to the database
@@ -127,7 +211,8 @@ def classify_signal(signal_id):
 
 CSV_FIELDS = [
     "id", "frequency_mhz", "bandwidth_mhz", "signal_strength_dbm",
-    "modulation", "pulse_rate_pps", "pulse_width_us", "wavelength_m", "latitude", "longitude",
+    "modulation", "pulse_rate_pps", "pulse_width_us", "wavelength_m",
+    "latitude", "longitude", "location_name",
     "timestamp", "classification", "confidence_score", "confidence_delta",
     "signal_family", "classification_notes",
 ]

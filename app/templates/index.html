@@ -262,11 +262,14 @@
             <label>Pulse Width (µs) <em style="color:#37474f">optional</em>
                 <input type="number" id="pulse_width_us" step="any" placeholder="—">
             </label>
+            <label>City <em style="color:#37474f">or use lat/lon below</em>
+                <input type="text" id="city_input" placeholder="Washington, DC" onblur="lookupCity()">
+            </label>
             <label>Latitude
-                <input type="number" id="latitude" step="any" placeholder="38.8977">
+                <input type="number" id="latitude" step="any" placeholder="38.8977" onblur="lookupLatLon()">
             </label>
             <label>Longitude
-                <input type="number" id="longitude" step="any" placeholder="-77.0365">
+                <input type="number" id="longitude" step="any" placeholder="-77.0365" onblur="lookupLatLon()">
             </label>
         </div>
         <button onclick="submitSignal()">Submit Signal</button>
@@ -298,6 +301,7 @@
                 <th>Pulse Rate (pps)</th>
                 <th>Pulse Width (µs)</th>
                 <th>Wavelength (m)</th>
+                <th>Location</th>
                 <th>Family</th>
                 <th>Classification</th>
                 <th>Confidence</th>
@@ -342,6 +346,7 @@
                 <td>${signal.pulse_rate_pps ?? '—'}</td>
                 <td>${signal.pulse_width_us ?? '—'}</td>
                 <td>${signal.wavelength_m.toFixed(4)}</td>
+                <td style="color:#78909c;font-size:12px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${signal.location_name ?? ''}">${signal.location_name ?? '—'}</td>
                 <td>${signal.signal_family ? `<span style="color:#78909c;font-size:11px">${signal.signal_family}</span>` : '—'}</td>
                 <td>${classificationBadge(signal.classification, signal.confidence_score)}</td>
                 <td>${signal.confidence_score != null ? signal.confidence_score + '%' : '—'}</td>
@@ -383,6 +388,10 @@
         const pw = document.getElementById('pulse_width_us').value;
         if (pw) body['pulse_width_us'] = Number(pw);
 
+        // Include resolved location name if present
+        const locationName = document.getElementById('city_input').dataset.resolvedName;
+        if (locationName) body['location_name'] = locationName;
+
         const res = await fetch('/signals', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -394,6 +403,9 @@
             // Clear form inputs
             ['frequency_mhz','bandwidth_mhz','signal_strength_dbm','pulse_rate_pps','pulse_width_us','latitude','longitude']
                 .forEach(f => document.getElementById(f).value = '');
+            const cityEl = document.getElementById('city_input');
+            cityEl.value = '';
+            delete cityEl.dataset.resolvedName;
             document.getElementById('modulation').value = '';
             loadSignals();
         } else {
@@ -481,6 +493,54 @@
         await Promise.all(data.map(s => fetch(`/signals/${s.id}`, { method: 'DELETE' })));
         showToast(`Deleted ${data.length} signal${data.length !== 1 ? 's' : ''}`);
         loadSignals();
+    }
+
+    // ── Geocoding helpers ──
+
+    // City input → fill lat/lon fields
+    async function lookupCity() {
+        const cityEl = document.getElementById('city_input');
+        const city = cityEl.value.trim();
+        if (!city) return;
+
+        const res = await fetch('/geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ city }),
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('latitude').value  = data.lat;
+            document.getElementById('longitude').value = data.lng;
+            cityEl.value = data.location_name;
+            cityEl.dataset.resolvedName = data.location_name;
+        } else {
+            showToast('City not found', true);
+        }
+    }
+
+    // Lat/lon fields → fill city input (only when both are populated)
+    let _latLonTimer = null;
+    async function lookupLatLon() {
+        const lat = document.getElementById('latitude').value;
+        const lng = document.getElementById('longitude').value;
+        if (!lat || !lng) return;
+
+        clearTimeout(_latLonTimer);
+        _latLonTimer = setTimeout(async () => {
+            const res = await fetch('/geocode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: Number(lat), lng: Number(lng) }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const cityEl = document.getElementById('city_input');
+                cityEl.value = data.location_name;
+                cityEl.dataset.resolvedName = data.location_name;
+            }
+        }, 400);
     }
 
     // ── Fetch and display version in header ──

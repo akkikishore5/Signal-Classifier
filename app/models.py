@@ -25,6 +25,7 @@ class Signal(db.Model):
 
     latitude             = db.Column(db.Float, nullable=False)
     longitude            = db.Column(db.Float, nullable=False)
+    location_name        = db.Column(db.String(256), nullable=True)   # reverse-geocoded city/place name
     timestamp            = db.Column(db.DateTime, default=lambda: datetime.now(ZoneInfo("America/Chicago")), nullable=False)
 
     # Classification results — null until classify is called
@@ -46,6 +47,7 @@ class Signal(db.Model):
             "wavelength_m":         self.wavelength_m,
             "latitude":             self.latitude,
             "longitude":            self.longitude,
+            "location_name":        self.location_name,
             "timestamp":            self.timestamp.isoformat(),
             "classification":       self.classification,
             "confidence_score":     self.confidence_score,
