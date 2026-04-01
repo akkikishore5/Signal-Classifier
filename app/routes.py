@@ -279,8 +279,11 @@ def import_csv():
             skipped += 1
             continue
 
-        pr = row.get("pulse_rate_pps", "").strip()
-        pw = row.get("pulse_width_us", "").strip()
+        pr   = row.get("pulse_rate_pps", "").strip()
+        pw   = row.get("pulse_width_us", "").strip()
+        loc  = row.get("location_name", "").strip() or None
+        lat  = float(row["latitude"])
+        lon  = float(row["longitude"])
         wavelength = SPEED_OF_LIGHT / (float(row["frequency_mhz"]) * 1e6)
 
         signal = Signal(
@@ -291,8 +294,9 @@ def import_csv():
             pulse_rate_pps      = float(pr) if pr else None,
             pulse_width_us      = float(pw) if pw else None,
             wavelength_m        = wavelength,
-            latitude            = float(row["latitude"]),
-            longitude           = float(row["longitude"]),
+            latitude            = lat,
+            longitude           = lon,
+            location_name       = loc,
         )
         db.session.add(signal)
         imported += 1
