@@ -121,6 +121,30 @@ def classify_signal(signal_id):
     return jsonify({**signal.to_dict(), "status": result["status"]}), 200
 
 
+CSV_FIELDS = [
+    "id", "frequency_mhz", "bandwidth_mhz", "signal_strength_dbm",
+    "modulation", "pulse_rate_pps", "wavelength_m", "latitude", "longitude",
+    "timestamp", "classification", "confidence_score", "classification_notes",
+]
+
+
+@bp.get("/signals/export")
+def export_csv():
+    signals = db.session.execute(db.select(Signal)).scalars().all()
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=CSV_FIELDS, extrasaction="ignore")
+    writer.writeheader()
+    for s in signals:
+        writer.writerow(s.to_dict())
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=signals.csv"},
+    )
+
+
 @bp.post("/signals/import")
 def import_csv():
     if "file" not in request.files:

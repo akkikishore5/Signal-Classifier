@@ -121,6 +121,14 @@
 
         button.classify-btn:hover { background: #1565c0; }
 
+        button.secondary {
+            background: transparent;
+            border: 1px solid #1e3a5f;
+            color: #78909c;
+        }
+
+        button.secondary:hover { border-color: #4fc3f7; color: #4fc3f7; background: transparent; }
+
         .import-label {
             background: transparent;
             border: 1px solid #1e3a5f;
@@ -271,6 +279,7 @@
         <h2>Collected Signals</h2>
         <div style="display:flex;align-items:center;gap:16px">
             <span class="signal-count" id="signal-count"></span>
+            <button class="secondary" onclick="exportCSV()">Export CSV</button>
             <label class="import-label">
                 Import CSV
                 <input type="file" accept=".csv" style="display:none" onchange="importCSV(this)">
@@ -414,6 +423,11 @@
         toast.style.background = error ? '#b71c1c' : '#1565c0';
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // ── Export CSV ──
+    function exportCSV() {
+        window.location.href = '/signals/export';
     }
 
     // ── Import CSV ──
