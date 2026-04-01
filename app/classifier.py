@@ -192,7 +192,7 @@ def classify(signal):
     top3 = results[:3]
     top_name, top_pct = top3[0]
 
-    # Confidence thresholds — these mirror how a real analyst would communicate certainty
+    # Confidence thresholds
     if top_pct >= 70.0:
         status = "HIGH CONFIDENCE"
     elif top_pct >= 40.0:
@@ -200,7 +200,7 @@ def classify(signal):
     else:
         status = "UNKNOWN"
 
-    # Human-readable summary of the top 3 matches for the classification_notes field
+    # Summary of the top 3 matches
     notes = "Top 3: " + ", ".join(f"{name} ({pct}%)" for name, pct in top3)
 
     return {

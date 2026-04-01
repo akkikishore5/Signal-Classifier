@@ -253,7 +253,10 @@
     <!-- Signals Table -->
     <div class="table-header">
         <h2>Collected Signals</h2>
-        <span class="signal-count" id="signal-count"></span>
+        <div style="display:flex;align-items:center;gap:16px">
+            <span class="signal-count" id="signal-count"></span>
+            <button class="danger" onclick="clearAll()">Clear All</button>
+        </div>
     </div>
 
     <table id="signals-table">
@@ -391,6 +394,16 @@
         toast.style.background = error ? '#b71c1c' : '#1565c0';
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // ── Delete all signals ──
+    async function clearAll() {
+        const res  = await fetch('/signals');
+        const data = await res.json();
+        if (data.length === 0) { showToast('No signals to clear'); return; }
+        await Promise.all(data.map(s => fetch(`/signals/${s.id}`, { method: 'DELETE' })));
+        showToast(`Cleared ${data.length} signal${data.length !== 1 ? 's' : ''}`);
+        loadSignals();
     }
 
     // Load signals when the page first opens
