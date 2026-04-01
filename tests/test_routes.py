@@ -10,7 +10,7 @@ VALID_SIGNAL = {
     "frequency_mhz": 1575.42,
     "bandwidth_mhz": 2.0,
     "signal_strength_dbm": -128.0,
-    "modulation": "BPSK",
+    "modulation": "PSK",
     "latitude": 38.8977,
     "longitude": -77.0365,
 }
@@ -40,8 +40,17 @@ def test_create_signal(client):
     assert response.status_code == 201
     data = response.get_json()
     assert data["frequency_mhz"] == 1575.42
-    assert data["modulation"] == "BPSK"
+    assert data["modulation"] == "PSK"
     assert data["wavelength_m"] is not None
+
+
+def test_create_signal_with_pulse_params(client):
+    signal = {**VALID_SIGNAL, "frequency_mhz": 9500.0, "pulse_rate_pps": 1500.0, "pulse_width_us": 10.0}
+    response = client.post("/signals", json=signal)
+    assert response.status_code == 201
+    data = response.get_json()
+    assert data["pulse_rate_pps"] == 1500.0
+    assert data["pulse_width_us"] == 10.0
 
 
 def test_wavelength_auto_calculated(client):
@@ -99,6 +108,8 @@ def test_classify_persists_result(client):
     data = response.get_json()
     assert data["classification"] == "GPS L1"
     assert data["confidence_score"] is not None
+    assert data["signal_family"] == "NAV"
+    assert data["confidence_delta"] is not None
 
 
 def test_delete_signal(client):

@@ -52,8 +52,9 @@ def create_signal():
         bandwidth_mhz       = float(data["bandwidth_mhz"]),
         signal_strength_dbm = float(data["signal_strength_dbm"]),
         modulation          = str(data["modulation"]),
-        # pulse_rate_pps is optional — use None if not provided
+        # pulse parameters are optional — only relevant for pulsed signals like radar
         pulse_rate_pps      = float(data["pulse_rate_pps"]) if data.get("pulse_rate_pps") is not None else None,
+        pulse_width_us      = float(data["pulse_width_us"]) if data.get("pulse_width_us") is not None else None,
         wavelength_m        = wavelength,
         latitude            = float(data["latitude"]),
         longitude           = float(data["longitude"]),
@@ -108,11 +109,14 @@ def classify_signal(signal_id):
         "signal_strength_dbm": signal.signal_strength_dbm,
         "modulation":          signal.modulation,
         "pulse_rate_pps":      signal.pulse_rate_pps,
+        "pulse_width_us":      signal.pulse_width_us,
     })
 
     # Write the classification results back to the database record
     signal.classification       = result["classification"]
     signal.confidence_score     = result["confidence_score"]
+    signal.confidence_delta     = result["confidence_delta"]
+    signal.signal_family        = result["signal_family"]
     signal.classification_notes = result["classification_notes"]
     db.session.commit()
 
@@ -123,8 +127,9 @@ def classify_signal(signal_id):
 
 CSV_FIELDS = [
     "id", "frequency_mhz", "bandwidth_mhz", "signal_strength_dbm",
-    "modulation", "pulse_rate_pps", "wavelength_m", "latitude", "longitude",
-    "timestamp", "classification", "confidence_score", "classification_notes",
+    "modulation", "pulse_rate_pps", "pulse_width_us", "wavelength_m", "latitude", "longitude",
+    "timestamp", "classification", "confidence_score", "confidence_delta",
+    "signal_family", "classification_notes",
 ]
 
 
@@ -141,9 +146,12 @@ def classify_all():
             "signal_strength_dbm": signal.signal_strength_dbm,
             "modulation":          signal.modulation,
             "pulse_rate_pps":      signal.pulse_rate_pps,
+            "pulse_width_us":      signal.pulse_width_us,
         })
         signal.classification       = result["classification"]
         signal.confidence_score     = result["confidence_score"]
+        signal.confidence_delta     = result["confidence_delta"]
+        signal.signal_family        = result["signal_family"]
         signal.classification_notes = result["classification_notes"]
 
     db.session.commit()
@@ -187,6 +195,7 @@ def import_csv():
             continue
 
         pr = row.get("pulse_rate_pps", "").strip()
+        pw = row.get("pulse_width_us", "").strip()
         wavelength = SPEED_OF_LIGHT / (float(row["frequency_mhz"]) * 1e6)
 
         signal = Signal(
@@ -195,6 +204,7 @@ def import_csv():
             signal_strength_dbm = float(row["signal_strength_dbm"]),
             modulation          = str(row["modulation"]).strip(),
             pulse_rate_pps      = float(pr) if pr else None,
+            pulse_width_us      = float(pw) if pw else None,
             wavelength_m        = wavelength,
             latitude            = float(row["latitude"]),
             longitude           = float(row["longitude"]),

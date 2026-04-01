@@ -1,54 +1,37 @@
-# import SQLAlchemy for ORM
 from flask_sqlalchemy import SQLAlchemy
-
-# use datetime and zoneinfo to automatically timestamp signals
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-# Create the SQLAlchemy instance 
 db = SQLAlchemy()
 
 
-# Create tables/schema
 class Signal(db.Model):
-    # set table name
     __tablename__ = "signals"
 
-    # Primary key
     id                   = db.Column(db.Integer, primary_key=True)
-
-    # Frequency in megahertz. Required field.
     frequency_mhz        = db.Column(db.Float, nullable=False)
-
-    # bandwidth in mhz Required field.
     bandwidth_mhz        = db.Column(db.Float, nullable=False)
-
-    # RSignal power in decibels per milliwatt.
     signal_strength_dbm  = db.Column(db.Float, nullable=False)
 
-    # Modulation scheme
+    # Simplified modulation scheme: AM, FM, PM, ASK, PSK, FSK
     modulation           = db.Column(db.String(64), nullable=False)
 
-    # Pulses per second (radar)
+    # Pulse parameters — only relevant for pulsed signals like radar
     pulse_rate_pps       = db.Column(db.Float, nullable=True)
+    pulse_width_us       = db.Column(db.Float, nullable=True)
 
-    # wavelength in meters
+    # Auto-calculated from frequency server-side
     wavelength_m         = db.Column(db.Float, nullable=False)
 
-    # Geographic coordinates where the signal was collected.
     latitude             = db.Column(db.Float, nullable=False)
     longitude            = db.Column(db.Float, nullable=False)
-
-    # log when the signal was submitted
     timestamp            = db.Column(db.DateTime, default=lambda: datetime.now(ZoneInfo("America/Chicago")), nullable=False)
 
-    # The name of the best-matching signal profile 
+    # Classification results — null until classify is called
     classification       = db.Column(db.String(128), nullable=True)
-
-    # Confidence percentage (0-100) from the classifier's weighted scoring.
     confidence_score     = db.Column(db.Float, nullable=True)
-
-    # Summary of the top 3 classification matches.
+    confidence_delta     = db.Column(db.Float, nullable=True)   # gap between #1 and #2 match
+    signal_family        = db.Column(db.String(32), nullable=True)  # RADAR, COMMS, NAV, COMMERCIAL
     classification_notes = db.Column(db.Text, nullable=True)
 
     def to_dict(self):
@@ -59,11 +42,14 @@ class Signal(db.Model):
             "signal_strength_dbm":  self.signal_strength_dbm,
             "modulation":           self.modulation,
             "pulse_rate_pps":       self.pulse_rate_pps,
+            "pulse_width_us":       self.pulse_width_us,
             "wavelength_m":         self.wavelength_m,
             "latitude":             self.latitude,
             "longitude":            self.longitude,
-            "timestamp":            self.timestamp.isoformat(),  # Convert to readable string
+            "timestamp":            self.timestamp.isoformat(),
             "classification":       self.classification,
             "confidence_score":     self.confidence_score,
+            "confidence_delta":     self.confidence_delta,
+            "signal_family":        self.signal_family,
             "classification_notes": self.classification_notes,
         }

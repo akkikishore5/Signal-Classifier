@@ -25,7 +25,10 @@ def create_app(config=None):
 
     # Push application context for database operations
     with app.app_context():
-        # Create tables if they don't already exist.
+        # Drop and recreate all tables so schema always matches the model.
+        # SQLite data is ephemeral inside the pod — wiped on every restart anyway.
+        # Tests override the URI with sqlite:///:memory: so this is safe everywhere.
+        db.drop_all()
         db.create_all()
 
     # Import and register /signals routes

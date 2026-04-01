@@ -250,19 +250,17 @@
                     <option value="">-- Select --</option>
                     <option>AM</option>
                     <option>FM</option>
-                    <option>WBFM</option>
-                    <option>NBFM</option>
-                    <option>BPSK</option>
-                    <option>QPSK</option>
+                    <option>PM</option>
+                    <option>ASK</option>
                     <option>PSK</option>
-                    <option>DSB</option>
-                    <option>OFDM</option>
-                    <option>PULSE</option>
-                    <option>CW</option>
+                    <option>FSK</option>
                 </select>
             </label>
             <label>Pulse Rate (pps) <em style="color:#37474f">optional</em>
                 <input type="number" id="pulse_rate_pps" step="any" placeholder="—">
+            </label>
+            <label>Pulse Width (µs) <em style="color:#37474f">optional</em>
+                <input type="number" id="pulse_width_us" step="any" placeholder="—">
             </label>
             <label>Latitude
                 <input type="number" id="latitude" step="any" placeholder="38.8977">
@@ -298,9 +296,12 @@
                 <th>Strength (dBm)</th>
                 <th>Modulation</th>
                 <th>Pulse Rate (pps)</th>
+                <th>Pulse Width (µs)</th>
                 <th>Wavelength (m)</th>
+                <th>Family</th>
                 <th>Classification</th>
                 <th>Confidence</th>
+                <th>Delta</th>
                 <th>Timestamp</th>
                 <th>Actions</th>
             </tr>
@@ -339,9 +340,12 @@
                 <td>${signal.signal_strength_dbm}</td>
                 <td>${signal.modulation}</td>
                 <td>${signal.pulse_rate_pps ?? '—'}</td>
+                <td>${signal.pulse_width_us ?? '—'}</td>
                 <td>${signal.wavelength_m.toFixed(4)}</td>
+                <td>${signal.signal_family ? `<span style="color:#78909c;font-size:11px">${signal.signal_family}</span>` : '—'}</td>
                 <td>${classificationBadge(signal.classification, signal.confidence_score)}</td>
                 <td>${signal.confidence_score != null ? signal.confidence_score + '%' : '—'}</td>
+                <td>${signal.confidence_delta != null ? signal.confidence_delta + '%' : '—'}</td>
                 <td style="color:#546e7a;font-size:12px">${new Date(signal.timestamp).toLocaleString()}</td>
                 <td>
                     <div class="actions">
@@ -376,6 +380,9 @@
         const pr = document.getElementById('pulse_rate_pps').value;
         if (pr) body['pulse_rate_pps'] = Number(pr);
 
+        const pw = document.getElementById('pulse_width_us').value;
+        if (pw) body['pulse_width_us'] = Number(pw);
+
         const res = await fetch('/signals', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -385,7 +392,7 @@
         if (res.ok) {
             showToast('Signal submitted');
             // Clear form inputs
-            ['frequency_mhz','bandwidth_mhz','signal_strength_dbm','pulse_rate_pps','latitude','longitude']
+            ['frequency_mhz','bandwidth_mhz','signal_strength_dbm','pulse_rate_pps','pulse_width_us','latitude','longitude']
                 .forEach(f => document.getElementById(f).value = '');
             document.getElementById('modulation').value = '';
             loadSignals();
