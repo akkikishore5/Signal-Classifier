@@ -28,11 +28,10 @@ def _reverse_geocode(lat, lon):
             timeout=5,
         )
         r.raise_for_status()
-        addr = r.json().get("address", {})
+        addr    = r.json().get("address", {})
         city    = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("county", "")
-        state   = addr.get("state", "")
-        country = addr.get("country_code", "").upper()
-        parts   = [p for p in [city, state, country] if p]
+        country = addr.get("country", "")
+        parts   = [p for p in [city, country] if p]
         return ", ".join(parts) if parts else None
     except Exception:
         return None
@@ -57,9 +56,8 @@ def _forward_geocode(city):
         # Build a tidy display name from address components if available
         addr    = best.get("address", {})
         city_n  = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("county", "")
-        state   = addr.get("state", "")
-        country = addr.get("country_code", "").upper()
-        parts   = [p for p in [city_n, state, country] if p]
+        country = addr.get("country", "")
+        parts   = [p for p in [city_n, country] if p]
         name    = ", ".join(parts) if parts else best.get("display_name", city)
         return lat, lon, name
     except Exception:
