@@ -279,12 +279,13 @@
         <h2>Collected Signals</h2>
         <div style="display:flex;align-items:center;gap:16px">
             <span class="signal-count" id="signal-count"></span>
+            <button class="secondary" onclick="classifyAll()">Classify All</button>
             <button class="secondary" onclick="exportCSV()">Export CSV</button>
             <label class="import-label">
                 Import CSV
                 <input type="file" accept=".csv" style="display:none" onchange="importCSV(this)">
             </label>
-            <button class="danger" onclick="clearAll()">Clear All</button>
+            <button class="danger" onclick="clearAll()">Delete All</button>
         </div>
     </div>
 
@@ -425,6 +426,18 @@
         setTimeout(() => toast.classList.remove('show'), 2500);
     }
 
+    // ── Classify all unclassified signals ──
+    async function classifyAll() {
+        const res = await fetch('/signals/classify-all', { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            showToast(data.classified > 0 ? `Classified ${data.classified} signal${data.classified !== 1 ? 's' : ''}` : 'No unclassified signals');
+            loadSignals();
+        } else {
+            showToast('Classify all failed', true);
+        }
+    }
+
     // ── Export CSV ──
     function exportCSV() {
         window.location.href = '/signals/export';
@@ -455,9 +468,11 @@
     async function clearAll() {
         const res  = await fetch('/signals');
         const data = await res.json();
-        if (data.length === 0) { showToast('No signals to clear'); return; }
+        if (data.length === 0) { showToast('No signals to delete'); return; }
+        const confirmed = confirm(`Are you sure you want to delete all ${data.length} signal${data.length !== 1 ? 's' : ''}? This cannot be undone.`);
+        if (!confirmed) return;
         await Promise.all(data.map(s => fetch(`/signals/${s.id}`, { method: 'DELETE' })));
-        showToast(`Cleared ${data.length} signal${data.length !== 1 ? 's' : ''}`);
+        showToast(`Deleted ${data.length} signal${data.length !== 1 ? 's' : ''}`);
         loadSignals();
     }
 

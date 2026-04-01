@@ -128,6 +128,28 @@ CSV_FIELDS = [
 ]
 
 
+@bp.post("/signals/classify-all")
+def classify_all():
+    unclassified = db.session.execute(
+        db.select(Signal).where(Signal.classification == None)
+    ).scalars().all()
+
+    for signal in unclassified:
+        result = classify({
+            "frequency_mhz":       signal.frequency_mhz,
+            "bandwidth_mhz":       signal.bandwidth_mhz,
+            "signal_strength_dbm": signal.signal_strength_dbm,
+            "modulation":          signal.modulation,
+            "pulse_rate_pps":      signal.pulse_rate_pps,
+        })
+        signal.classification       = result["classification"]
+        signal.confidence_score     = result["confidence_score"]
+        signal.classification_notes = result["classification_notes"]
+
+    db.session.commit()
+    return jsonify({"classified": len(unclassified)}), 200
+
+
 @bp.get("/signals/export")
 def export_csv():
     signals = db.session.execute(db.select(Signal)).scalars().all()
