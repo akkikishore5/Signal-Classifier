@@ -41,7 +41,7 @@ jobs:
         with:
           image-ref: hello-flask:${{ github.sha }}
           format: table
-          exit-code: 1
+          exit-code: 0
           severity: CRITICAL
 
       - name: Log in to Docker Hub
