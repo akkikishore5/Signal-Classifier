@@ -121,6 +121,21 @@
 
         button.classify-btn:hover { background: #1565c0; }
 
+        .import-label {
+            background: transparent;
+            border: 1px solid #1e3a5f;
+            border-radius: 3px;
+            color: #78909c;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            letter-spacing: 1px;
+            padding: 7px 16px;
+            text-transform: uppercase;
+        }
+
+        .import-label:hover { border-color: #4fc3f7; color: #4fc3f7; }
+
         /* ── Signals table ── */
         .table-header {
             display: flex;
@@ -204,6 +219,7 @@
 <header>
     <h1>RF Signal Classifier</h1>
     <span>// SIGINT Analysis Platform</span>
+    <span id="version-tag" style="margin-left:auto;color:#1e3a5f;font-size:11px;letter-spacing:1px"></span>
 </header>
 
 <div class="container">
@@ -255,6 +271,10 @@
         <h2>Collected Signals</h2>
         <div style="display:flex;align-items:center;gap:16px">
             <span class="signal-count" id="signal-count"></span>
+            <label class="import-label">
+                Import CSV
+                <input type="file" accept=".csv" style="display:none" onchange="importCSV(this)">
+            </label>
             <button class="danger" onclick="clearAll()">Clear All</button>
         </div>
     </div>
@@ -396,6 +416,27 @@
         setTimeout(() => toast.classList.remove('show'), 2500);
     }
 
+    // ── Import CSV ──
+    async function importCSV(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch('/signals/import', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (res.ok) {
+            showToast(`Imported ${data.imported} signal${data.imported !== 1 ? 's' : ''}${data.skipped ? `, skipped ${data.skipped}` : ''}`);
+            loadSignals();
+        } else {
+            showToast(`Import failed: ${data.error}`, true);
+        }
+
+        input.value = '';
+    }
+
     // ── Delete all signals ──
     async function clearAll() {
         const res  = await fetch('/signals');
@@ -405,6 +446,13 @@
         showToast(`Cleared ${data.length} signal${data.length !== 1 ? 's' : ''}`);
         loadSignals();
     }
+
+    // ── Fetch and display version in header ──
+    fetch('/version')
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('version-tag').textContent = `v${d.version}`;
+        });
 
     // Load signals when the page first opens
     loadSignals();

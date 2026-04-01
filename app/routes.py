@@ -1,6 +1,9 @@
 # Blueprint lets us define routes in a separate file from the main app.
 # This keeps the code organized — app.py handles app setup, routes.py handles endpoints.
-from flask import Blueprint, request, jsonify
+import csv
+import io
+
+from flask import Blueprint, request, jsonify, Response
 
 # Import the database instance and Signal model from models.py
 from models import db, Signal
@@ -116,6 +119,45 @@ def classify_signal(signal_id):
     # Merge the full signal dict with the status field from the classifier result
     # (**dict unpacking combines two dicts into one)
     return jsonify({**signal.to_dict(), "status": result["status"]}), 200
+
+
+@bp.post("/signals/import")
+def import_csv():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files["file"]
+    if not file.filename.endswith(".csv"):
+        return jsonify({"error": "File must be a .csv"}), 400
+
+    content = file.read().decode("utf-8-sig")
+    reader  = csv.DictReader(io.StringIO(content))
+    imported = 0
+    skipped  = 0
+
+    for row in reader:
+        if not all(row.get(f, "").strip() for f in REQUIRED_FIELDS):
+            skipped += 1
+            continue
+
+        pr = row.get("pulse_rate_pps", "").strip()
+        wavelength = SPEED_OF_LIGHT / (float(row["frequency_mhz"]) * 1e6)
+
+        signal = Signal(
+            frequency_mhz       = float(row["frequency_mhz"]),
+            bandwidth_mhz       = float(row["bandwidth_mhz"]),
+            signal_strength_dbm = float(row["signal_strength_dbm"]),
+            modulation          = str(row["modulation"]).strip(),
+            pulse_rate_pps      = float(pr) if pr else None,
+            wavelength_m        = wavelength,
+            latitude            = float(row["latitude"]),
+            longitude           = float(row["longitude"]),
+        )
+        db.session.add(signal)
+        imported += 1
+
+    db.session.commit()
+    return jsonify({"imported": imported, "skipped": skipped}), 201
 
 
 @bp.delete("/signals/<int:signal_id>")

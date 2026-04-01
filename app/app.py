@@ -1,8 +1,8 @@
 # Flask for REST API, jsonify to convert python dict into json
 from flask import Flask, jsonify, render_template
 
-# import SQLAlchemy instance
 from models import db
+from version import VERSION
 
 
 # factory pattern
@@ -36,6 +36,10 @@ def create_app(config=None):
     @app.get("/")
     def index():
         return render_template("index.html")
+
+    @app.get("/version")
+    def version():
+        return jsonify({"version": VERSION}), 200
 
     # Register the /health route directly for liveness/readiness probes
     @app.get("/health")

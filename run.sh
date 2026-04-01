@@ -1,26 +1,26 @@
 #!/bin/bash
 set -e
 
-docker build -t hello-flask:1.0.1 .
+TAG=$(git rev-parse --short HEAD)
+IMAGE="hello-flask:$TAG"
 
-# Remove the old image from minikube cache so the new build is used
-minikube image rm hello-flask:1.0.1 2>/dev/null || true
-minikube image load hello-flask:1.0.1
+echo "Building image: $IMAGE"
+docker build --no-cache -t "$IMAGE" .
 
+echo "Loading image into minikube..."
+minikube image rm "$IMAGE" 2>/dev/null || true
+minikube image load "$IMAGE"
+
+echo "Deploying with Terraform..."
 cd ./terraform
-terraform init
-terraform apply -auto-approve
+terraform init -input=false
+terraform apply -auto-approve -var="image_tag=$TAG"
 cd ..
 
-# Force Kubernetes to restart the pod and pick up the new image
+echo "Restarting deployment..."
 kubectl rollout restart deployment/hello-flask
 kubectl rollout status deployment/hello-flask --timeout=60s
 
 echo ""
 echo "App URL:"
 minikube service hello-flask-svc --url
-
-#DELETION COMMANDS
-# terraform destroy -auto-approve
-# minikube stop
-# kubectl delete deployment
