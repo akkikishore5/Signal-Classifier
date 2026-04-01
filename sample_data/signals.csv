@@ -1,6 +1,6 @@
 frequency_mhz,bandwidth_mhz,signal_strength_dbm,modulation,pulse_rate_pps,pulse_width_us,latitude,longitude,location_name
-1575.42,2.0,-128.0,PSK,,,38.8977,-77.0365,"Washington, United States"
-1227.60,1.0,-131.0,PSK,,,51.5074,-0.1278,"London, United Kingdom"
+1575.42,2.0,-128.0,PSK,,,38.8977,-77.0365,"Washington, USA"
+1227.60,1.0,-131.0,PSK,,,51.5074,-0.1278,"London, UK"
 9450.0,22.0,-32.0,FM,1400.0,10.0,35.6895,139.6917,"Tokyo, Japan"
 1280.0,4.5,-42.0,FM,950.0,50.0,48.8566,2.3522,"Paris, France"
 148.5,0.022,-78.0,FM,,,55.7558,37.6173,"Moscow, Russia"
