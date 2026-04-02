@@ -1,18 +1,13 @@
-# Blueprint lets us define routes in a separate file from the main app.
-# This keeps the code organized — app.py handles app setup, routes.py handles endpoints.
+# Routes for the signals API — registered as a Blueprint in app.py
 import csv
 import io
 
 import requests as http
 from flask import Blueprint, request, jsonify, Response
 
-# Import the database instance and Signal model from models.py
 from models import db, Signal
-
-# Import the classification function from classifier.py
 from classifier import classify
 
-# Create a Blueprint named "signals". app.py registers this with app.register_blueprint(bp).
 bp = Blueprint("signals", __name__)
 
 _NOMINATIM_HEADERS = {"User-Agent": "rf-signal-classifier/1.0"}
@@ -66,8 +61,7 @@ def _forward_geocode(city):
 # Speed of light in m/s — used to calculate wavelength from frequency (c = fλ → λ = c/f)
 SPEED_OF_LIGHT = 3e8
 
-# Fields the client must provide when submitting a signal.
-# wavelength_m is intentionally excluded — it's always calculated server-side.
+# wavelength_m excluded — always calculated server-side
 REQUIRED_FIELDS = [
     "frequency_mhz", "bandwidth_mhz", "signal_strength_dbm",
     "modulation", "latitude", "longitude",
@@ -106,25 +100,19 @@ def create_signal():
     Validates required fields, auto-calculates wavelength, and saves to the database.
     Returns the created signal as JSON with HTTP 201 Created.
     """
-    # Parse JSON body — silent=True returns None instead of raising an error
-    # if the body is missing or not valid JSON. The `or {}` handles the None case.
     data = request.get_json(silent=True) or {}
 
-    # Check all required fields are present and return a helpful error if not.
-    # This is input validation at the API boundary — we never trust client input.
     missing = [f for f in REQUIRED_FIELDS if f not in data]
     if missing:
         return jsonify({"error": "Missing required fields", "fields": missing}), 400
 
-    # Derive wavelength from frequency using the wave equation: λ = c / f
-    # Convert MHz to Hz by multiplying by 1e6 before dividing
+    # λ = c / f, convert MHz to Hz
     wavelength = SPEED_OF_LIGHT / (float(data["frequency_mhz"]) * 1e6)
 
     lat = float(data["latitude"])
     lon = float(data["longitude"])
 
-    # If the client sent a city name it was already resolved to lat/lon on the frontend.
-    # Use whatever location_name they supply; fall back to reverse geocoding from lat/lon.
+    # Use client-supplied location name or reverse-geocode from lat/lon
     location_name = data.get("location_name") or _reverse_geocode(lat, lon)
 
     # Create a new Signal object. SQLAlchemy maps each keyword argument to a column.

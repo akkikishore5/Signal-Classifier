@@ -1,21 +1,3 @@
-# Simplified modulation taxonomy:
-#   Analog: AM (amplitude), FM (frequency), PM (phase)
-#   Digital: ASK (amplitude shift keying), FSK (frequency shift keying), PSK (phase shift keying)
-#
-# This maps cleanly to real signals:
-#   AM/FM Radio         → AM / FM
-#   GPS, SATCOM, WiFi   → PSK
-#   Tactical HF comms   → FSK
-#   Radar (LFM chirp)   → FM  (linear frequency modulation within each pulse)
-#   Radar (phase-coded) → PSK
-#   Analog voice comms  → FM / PM
-
-# Signal family groups emitters by operational role:
-#   RADAR      — active emitters, pulsed, high power
-#   COMMS      — communications links
-#   NAV        — navigation/positioning signals
-#   COMMERCIAL — civilian broadcast and consumer signals
-
 PROFILES = [
     {
         "name": "GPS L1",
@@ -182,11 +164,11 @@ def _score_against_profile(signal, profile):
     signal_pr  = signal.get("pulse_rate_pps")
     profile_pr = profile.get("pulse_rate_pps")
     if profile_pr is None and signal_pr is None:
-        pr_score = 1.0   # Both CW — agreement
+        pr_score = 1.0  
     elif profile_pr is None and signal_pr is not None:
-        pr_score = 0.0   # Profile is CW, signal is pulsed — mismatch
+        pr_score = 0.0   
     elif profile_pr is not None and signal_pr is None:
-        pr_score = 0.0   # Profile is pulsed, signal is CW — mismatch
+        pr_score = 0.0  
     else:
         pr_score = _window_score(signal_pr, profile_pr, profile["pr_tol"])
 
